@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE LIVING PLUS | ใบแจ้งหนี้ / ใบเสร็จ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --maroon:#6B1220;
+    --maroon-deep:#4A0C16;
+    --maroon-soft:#8C2233;
+    --cream:#FFFFFF;
+    --paper:#FDFBFA;
+    --ink:#241417;
+    --ink-soft:#6b5a5d;
+    --line:#E7DCDA;
+    --line-soft:#F1E8E7;
+    --danger:#B23A2E;
+    --radius:2px;
+    --font-body-th:'Noto Sans Thai',sans-serif;
+    --font-body-en:'Inter',sans-serif;
+    --font-body-zh:'Noto Sans SC',sans-serif;
+    --font-disp-th:'Noto Serif Thai',serif;
+    --font-disp-en:'Playfair Display',serif;
+    --font-disp-zh:'Noto Serif SC',serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#F4EFED;
+    color:var(--ink);
+    font-family:var(--font-body-th),var(--font-body-en);
+    -webkit-font-smoothing:antialiased;
+  }
+  body.lang-en{font-family:var(--font-body-en),var(--font-body-th);}
+  body.lang-zh{font-family:var(--font-body-zh),var(--font-body-en);}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    background:var(--maroon-deep);
+    color:#fff;
+    padding:18px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    border-bottom:3px solid var(--maroon-soft);
+  }
+  .brandmark{display:flex;align-items:center;gap:12px;}
+  .brandmark .seal{
+    width:38px;height:38px;border-radius:50%;
+    border:1.4px solid rgba(255,255,255,.75);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-disp-en);font-weight:700;font-size:13px;
+    letter-spacing:1px;
+    position:relative;
+  }
+  .brandmark .seal::before{
+    content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.4);border-radius:50%;
+  }
+  .brandmark .word{
+    font-family:var(--font-disp-en);
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:.5px;
+  }
+  .brandmark .word small{
+    display:block;
+    font-family:var(--font-body-th);
+    font-weight:400;
+    font-size:11px;
+    letter-spacing:1.5px;
+    opacity:.75;
+    text-transform:uppercase;
+  }
+  .topbar-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .seg{
+    display:flex;background:rgba(255,255,255,.08);border-radius:999px;padding:3px;
+  }
+  .seg button{
+    border:none;background:transparent;color:#fff;opacity:.65;
+    padding:7px 16px;border-radius:999px;font-size:13px;cursor:pointer;
+    font-family:inherit;font-weight:600;transition:.15s;
+  }
+  .seg button.active{background:#fff;color:var(--maroon-deep);opacity:1;}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(340px,440px) 1fr;
+    gap:0;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    .layout{grid-template-columns:1fr;}
+  }
+  .form-pane{
+    padding:28px;
+    max-height:calc(100vh - 76px);
+    overflow-y:auto;
+    position:sticky;
+    top:76px;
+  }
+  @media (max-width:980px){
+    .form-pane{position:static;max-height:none;}
+  }
+  .preview-pane{
+    padding:36px 28px 80px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+  }
+
+  /* ---------- Form ---------- */
+  .card{
+    background:var(--cream);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 20px 22px;
+    margin-bottom:16px;
+  }
+  .card h3{
+    margin:0 0 14px;
+    font-size:13px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--maroon);
+    font-weight:700;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h3::before{
+    content:"";width:14px;height:1.5px;background:var(--maroon);display:inline-block;
+  }
+  label{
+    display:block;font-size:12px;color:var(--ink-soft);margin:10px 0 4px;font-weight:600;
+  }
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=date],input[type=number],select,textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
+    font-size:14px;font-family:inherit;color:var(--ink);background:#fff;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--maroon-soft);outline-offset:1px;border-color:var(--maroon-soft);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .item-row{
+    display:grid;grid-template-columns:1fr 120px 30px;gap:8px;align-items:start;margin-bottom:8px;
+  }
+  .item-row textarea{resize:vertical;min-height:38px;}
+  .icon-btn{
+    background:none;border:1px solid var(--line);border-radius:var(--radius);
+    color:var(--danger);cursor:pointer;font-size:16px;line-height:1;height:38px;
+  }
+  .icon-btn:hover{background:#FBEAE8;}
+  .add-item{
+    margin-top:4px;background:none;border:1px dashed var(--maroon-soft);color:var(--maroon);
+    padding:8px 12px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;width:100%;
+  }
+  .add-item:hover{background:var(--line-soft);}
+  .toggle-row{display:flex;align-items:center;gap:10px;margin:2px 0 10px;}
+  .toggle-row input[type=checkbox]{width:17px;height:17px;accent-color:var(--maroon);}
+  .radio-group{display:flex;gap:16px;margin:6px 0 10px;}
+  .radio-group label{display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;margin:0;color:var(--ink);}
+  .radio-group input{accent-color:var(--maroon);width:15px;height:15px;}
+  .hint{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  select#whtPct{width:110px;display:inline-block;}
+
+  .generate-btn{
+    position:sticky;bottom:0;
+    width:100%;
+    background:var(--maroon);
+    color:#fff;
+    border:none;
+    padding:16px;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.4px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    box-shadow:0 -8px 20px -6px rgba(0,0,0,.25);
+    font-family:inherit;
+    transition:.15s;
+  }
+  .generate-btn:hover{background:var(--maroon-deep);}
+  .generate-btn:disabled{opacity:.6;cursor:wait;}
+
+  /* ---------- Document preview ---------- */
+  #previewDoc{
+    width:794px;
+    min-height:1123px;
+    background:var(--paper);
+    box-shadow:0 10px 40px -12px rgba(0,0,0,.35);
+    padding:56px 60px 48px;
+    position:relative;
+  }
+  @media (max-width:980px){
+    .preview-pane{overflow-x:auto;}
+  }
+  .doc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .doc-brand .seal-lg{
+    width:56px;height:56px;border-radius:50%;border:1.6px solid var(--maroon);
+    display:flex;align-items:center;justify-content:center;position:relative;color:var(--maroon);
+    font-family:var(--font-disp-en);font-weight:700;font-size:17px;letter-spacing:.5px;
+  }
+  .doc-brand .seal-lg::before{content:"";position:absolute;inset:4px;border:1px solid var(--maroon-soft);border-radius:50%;}
+  .doc-brand{display:flex;gap:14px;align-items:center;}
+  .doc-brand .brand-text .name{font-family:var(--font-disp-en);font-weight:700;font-size:19px;color:var(--maroon-deep);letter-spacing:.3px;}
+  .doc-brand .brand-text .tag{font-size:11px;color:var(--ink-soft);letter-spacing:1.2px;text-transform:uppercase;margin-top:2px;}
+  .doc-title{text-align:right;}
+  .doc-title .main{
+    font-family:var(--font-disp-th),var(--font-disp-en);
+    font-weight:700;
+    font-size:34px;
+    color:var(--maroon);
+    line-height:1.1;
+  }
+  .doc-title .sub{font-size:12px;color:var(--ink-soft);letter-spacing:2px;text-transform:uppercase;margin-top:3px;}
+  .doc-title .num{font-size:12.5px;color:var(--ink);margin-top:10px;}
+  .doc-title .num b{color:var(--maroon-deep);}
+  .hr{border:none;border-top:2px solid var(--maroon);margin:18px 0 22px;}
+  .hr-thin{border:none;border-top:1px solid var(--line);margin:16px 0;}
+
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:22px;}
+  .party h4{
+    margin:0 0 8px;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--maroon);
+    font-weight:700;border-bottom:1px solid var(--line);padding-bottom:6px;
+  }
+  .party .pname{font-weight:700;font-size:14.5px;margin-bottom:3px;}
+  .party .pline{font-size:12.5px;color:var(--ink);line-height:1.55;}
+  .party .pline .k{color:var(--ink-soft);}
+
+  .meta-row{display:flex;justify-content:flex-end;gap:6px;font-size:12.5px;margin-bottom:14px;}
+
+  table.items{width:100%;border-collapse:collapse;margin-top:6px;}
+  table.items thead th{
+    text-align:left;font-size:11px;letter-spacing:.8px;text-transform:uppercase;
+    color:#fff;background:var(--maroon);padding:9px 12px;font-weight:600;
+  }
+  table.items thead th.num{text-align:right;}
+  table.items tbody td{
+    padding:10px 12px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:top;
+  }
+  table.items tbody td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  table.items tbody tr:nth-child(even){background:var(--line-soft);}
+
+  .totals{margin-top:0;width:100%;}
+  .totals-inner{margin-left:auto;width:300px;font-size:13px;}
+  .totals-inner .r{display:flex;justify-content:space-between;padding:6px 0;}
+  .totals-inner .r.grand{
+    border-top:2px solid var(--maroon);margin-top:4px;padding-top:10px;
+    font-weight:700;font-size:16px;color:var(--maroon-deep);
+  }
+  .totals-inner .r.wht{color:var(--danger);}
+
+  .words-band{
+    width:100%;text-align:right;font-size:12.5px;font-style:italic;color:var(--ink);
+    margin-top:8px;padding-top:8px;border-top:1px solid var(--line);
+  }
+
+  .payment-box{margin-top:18px;font-size:12.5px;}
+  .payment-box h4{margin:0 0 6px;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--maroon);font-weight:700;}
+  .payment-box .bank-line{color:var(--ink);line-height:1.6;}
+
+  .sign-area{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:56px;}
+  .sign-box{text-align:center;font-size:12px;}
+  .sign-line{border-top:1px solid var(--ink);margin-bottom:8px;padding-top:8px;}
+  .sign-box .role{font-weight:700;margin-bottom:26px;color:var(--maroon-deep);}
+  .sign-box .date-line{margin-top:6px;color:var(--ink-soft);}
+
+  .doc-footer{
+    position:absolute;bottom:26px;left:0;right:0;text-align:center;
+    font-size:9.5px;letter-spacing:1.5px;color:#c7b9b8;text-transform:uppercase;font-weight:500;
+  }
+
+  .empty-note{color:var(--ink-soft);font-style:italic;}
+</style>
+</head>
+<body class="lang-th">
+
+<div class="topbar">
+  <div class="brandmark">
+    <div class="seal">TLP</div>
+    <div class="word">THE LIVING PLUS<small id="uiSubtitle">ระบบออกเอกสาร</small></div>
+  </div>
+  <div class="topbar-controls">
+    <div class="seg" id="docTypeSeg">
+      <button data-doctype="invoice" class="active" id="btnInvoice">ใบแจ้งหนี้</button>
+      <button data-doctype="receipt" id="btnReceipt">ใบเสร็จ</button>
+    </div>
+    <div class="seg" id="langSeg">
+      <button data-lang="th" class="active">ไทย</button>
+      <button data-lang="en">EN</button>
+      <button data-lang="zh">中文</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- ================= FORM PANE ================= -->
+  <div class="form-pane">
+
+    <div class="card">
+      <h3 id="lblDocInfo">ข้อมูลเอกสาร</h3>
+      <label id="lblDocNumber">เลขที่เอกสาร (เว้นว่างได้)</label>
+      <input type="text" id="docNumber" placeholder="เช่น INV-2026-001">
+      <label id="lblDate">วันที่</label>
+      <input type="date" id="docDate">
+    </div>
+
+    <div class="card">
+      <h3 id="lblBrandSection">โลโก้ / แบรนด์ (ไม่บังคับ)</h3>
+      <div class="toggle-row">
+        <input type="checkbox" id="showBrand">
+        <label style="margin:0" id="lblBrandShow">แสดงโลโก้และข้อมูลแบรนด์บนเอกสาร</label>
+      </div>
+      <div id="brandFieldsWrap" style="display:none">
+        <label id="lblBrandLogo">อัปโหลดโลโก้</label>
+        <input type="file" id="brandLogoInput" accept="image/*">
+        <label id="lblBrandName">ชื่อแบรนด์</label>
+        <input type="text" id="brandNameInput" value="THE LIVING PLUS">
+        <label id="lblBrandSlogan">สโลแกน</label>
+        <input type="text" id="brandSloganInput" value="Real Estate Advisory &amp; Brokerage">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="lblPartyA">ผู้ออกเอกสาร</h3>
+      <div id="partyAFields"></div>
+    </div>
+
+    <div class="card">
+      <h3 id="lblPartyB">ลูกค้า / ผู้รับเอกสาร</h3>
+      <div id="partyBFields"></div>
+    </div>
+
+    <div class="card">
+      <h3 id="lblItems">รายการ</h3>
+      <div id="itemsFields"></div>
+      <button class="add-item" id="addItemBtn">+ <span id="lblAddItem">เพิ่มรายการ</span></button>
+    </div>
+
+    <div class="card">
+      <h3 id="lblWht">ภาษีหัก ณ ที่จ่าย</h3>
+      <div class="radio-group" id="whtModeGroup" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <label><input type="radio" name="whtmode" value="none" checked> <span id="lblWhtNone">ไม่มีภาษี</span></label>
+        <label><input type="radio" name="whtmode" value="deduct"> <span id="lblWhtDeduct">หัก ณ ที่จ่าย (หักออกจากยอด)</span></label>
+        <label><input type="radio" name="whtmode" value="add"> <span id="lblWhtAdd">บวกเพิ่ม (เพิ่มเข้ายอด)</span></label>
+      </div>
+      <div id="whtPctWrap" style="display:none">
+        <label id="lblWhtPct">อัตราภาษี</label>
+        <select id="whtPct">
+          <option value="3">3%</option>
+          <option value="4">4%</option>
+          <option value="5" selected>5%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="lblPayment">ช่องทางชำระเงิน</h3>
+      <div class="radio-group">
+        <label><input type="radio" name="paymethod" value="transfer" checked> <span id="lblTransfer">โอนเงิน</span></label>
+        <label><input type="radio" name="paymethod" value="cash"> <span id="lblCash">เงินสด</span></label>
+      </div>
+      <div id="bankFields">
+        <label id="lblBankName">ธนาคาร</label>
+        <input type="text" id="bankName" placeholder="เช่น ธนาคารกสิกรไทย">
+        <div class="row2">
+          <div>
+            <label id="lblAccName">ชื่อบัญชี</label>
+            <input type="text" id="accName" value="THE LIVING PLUS">
+          </div>
+          <div>
+            <label id="lblAccNumber">เลขที่บัญชี</label>
+            <input type="text" id="accNumber" placeholder="xxx-x-xxxxx-x">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generateBtn">
+      <span id="lblGenerate">สร้างเอกสาร</span>
+    </button>
+  </div>
+
+  <!-- ================= PREVIEW PANE ================= -->
+  <div class="preview-pane">
+    <div id="previewDoc"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   TRANSLATIONS
+   ============================================================ */
+const T = {
+  th:{
+    subtitle:"ระบบออกเอกสาร", invoice:"ใบแจ้งหนี้", receipt:"ใบเสร็จรับเงิน",
+    docInfo:"ข้อมูลเอกสาร", docNumberInv:"เลขที่ใบแจ้งหนี้ (เว้นว่างได้)", docNumberRcp:"เลขที่ใบเสร็จ (เว้นว่างได้)",
+    date:"วันที่",
+    partyA_inv:"ผู้ออกเอกสาร", partyB_inv:"ลูกค้า / ผู้รับใบแจ้งหนี้",
+    partyA_rcp:"ผู้รับเงิน", partyB_rcp:"ผู้จ่ายเงิน",
+    name:"ชื่อ", address:"ที่อยู่", idType:"ประเภทเลขประจำตัว", idNumber:"เลขประจำตัว", phone:"เบอร์โทรศัพท์",
+    idcard:"เลขบัตรประชาชน", taxid:"เลขประจำตัวผู้เสียภาษี", passport:"เลขพาสปอร์ต",
+    companyreg:"เลขจดทะเบียนบริษัท", companytax:"เลขผู้เสียภาษีบริษัท",
+    items:"รายการ", desc:"รายละเอียด", amount:"จำนวนเงิน (บาท)", addItem:"เพิ่มรายการ",
+    subtotal:"ยอดรวม", wht:"ภาษีหัก ณ ที่จ่าย", netTotal:"ยอดสุทธิ", total:"ยอดรวมทั้งสิ้น",
+    docNumShortInv:"เลขที่ใบแจ้งหนี้", docNumShortRcp:"เลขที่ใบเสร็จ",
+    whtSection:"ภาษีหัก ณ ที่จ่าย", whtEnable:"มีการหักภาษี ณ ที่จ่าย", whtRate:"อัตราภาษี",
+    whtNone:"ไม่มีภาษี", whtDeduct:"หัก ณ ที่จ่าย (หักออกจากยอด)", whtAdd:"บวกเพิ่ม (เพิ่มเข้ายอด)",
+    brandSection:"โลโก้ / แบรนด์ (ไม่บังคับ)", brandShow:"แสดงโลโก้และข้อมูลแบรนด์บนเอกสาร",
+    brandLogo:"อัปโหลดโลโก้", brandName:"ชื่อแบรนด์", brandSlogan:"สโลแกน",
+    payment:"ช่องทางชำระเงิน", transfer:"โอนเงิน", cash:"เงินสด",
+    bankName:"ธนาคาร", accName:"ชื่อบัญชี", accNumber:"เลขที่บัญชี",
+    words:"จำนวนเงินตัวอักษร", generate:"สร้างเอกสาร", generating:"กำลังสร้างไฟล์ PDF...",
+    signA_inv:"ผู้ออกเอกสาร", signB_inv:"ลูกค้า",
+    signA_rcp:"ผู้รับเงิน", signB_rcp:"ผู้จ่ายเงิน",
+    signDate:"วันที่ลงนาม", printedName:"( .............................................. )",
+    footer:"Powered by THE LIVING PLUS",
+    emptyItem:"— ยังไม่มีรายการ —",
+    payVia:"ชำระโดย", none:"—",
+  },
+  en:{
+    subtitle:"Document Generator", invoice:"INVOICE", receipt:"RECEIPT",
+    docInfo:"Document Info", docNumberInv:"Invoice No. (optional)", docNumberRcp:"Receipt No. (optional)",
+    date:"Date",
+    partyA_inv:"Issued By", partyB_inv:"Customer / Bill To",
+    partyA_rcp:"Received By", partyB_rcp:"Paid By",
+    name:"Name", address:"Address", idType:"ID Type", idNumber:"ID Number", phone:"Phone",
+    idcard:"National ID No.", taxid:"Tax ID No.", passport:"Passport No.",
+    companyreg:"Company Registration No.", companytax:"Company Tax ID No.",
+    items:"Items", desc:"Description", amount:"Amount (THB)", addItem:"Add item",
+    subtotal:"Subtotal", wht:"Withholding Tax", netTotal:"Net Total", total:"Grand Total",
+    docNumShortInv:"Invoice No.", docNumShortRcp:"Receipt No.",
+    whtSection:"Withholding Tax", whtEnable:"Apply withholding tax", whtRate:"Rate",
+    whtNone:"No tax", whtDeduct:"Withhold (deduct from total)", whtAdd:"Add on (add to total)",
+    brandSection:"Logo / Brand (optional)", brandShow:"Show logo and brand info on document",
+    brandLogo:"Upload logo", brandName:"Brand name", brandSlogan:"Slogan",
+    payment:"Payment Method", transfer:"Bank Transfer", cash:"Cash",
+    bankName:"Bank", accName:"Account Name", accNumber:"Account Number",
+    words:"Amount in Words", generate:"Create Document", generating:"Generating PDF...",
+    signA_inv:"Issued By", signB_inv:"Customer",
+    signA_rcp:"Received By", signB_rcp:"Paid By",
+    signDate:"Date Signed", printedName:"( .............................................. )",
+    footer:"Powered by THE LIVING PLUS",
+    emptyItem:"— No items —",
+    payVia:"Paid via", none:"—",
+  },
+  zh:{
+    subtitle:"单据生成系统", invoice:"发票", receipt:"收据",
+    docInfo:"单据信息", docNumberInv:"发票编号（可留空）", docNumberRcp:"收据编号（可留空）",
+    date:"日期",
+    partyA_inv:"开票方", partyB_inv:"客户 / 收票方",
+    partyA_rcp:"收款方", partyB_rcp:"付款方",
+    name:"姓名", address:"地址", idType:"证件类型", idNumber:"证件号码", phone:"电话号码",
+    idcard:"身份证号", taxid:"税号", passport:"护照号码",
+    companyreg:"公司注册号", companytax:"公司税号",
+    items:"项目明细", desc:"说明", amount:"金额（泰铢）", addItem:"添加项目",
+    subtotal:"小计", wht:"预扣税", netTotal:"净额", total:"总计",
+    docNumShortInv:"发票编号", docNumShortRcp:"收据编号",
+    whtSection:"预扣税", whtEnable:"启用预扣税", whtRate:"税率",
+    whtNone:"无预扣税", whtDeduct:"预扣（从总额中扣除）", whtAdd:"加收（加到总额中）",
+    brandSection:"标志 / 品牌（可选）", brandShow:"在单据上显示标志与品牌信息",
+    brandLogo:"上传标志", brandName:"品牌名称", brandSlogan:"标语",
+    payment:"付款方式", transfer:"银行转账", cash:"现金",
+    bankName:"银行", accName:"账户名称", accNumber:"账号",
+    words:"大写金额", generate:"生成单据", generating:"正在生成 PDF...",
+    signA_inv:"开票方", signB_inv:"客户",
+    signA_rcp:"收款方", signB_rcp:"付款方",
+    signDate:"签署日期", printedName:"( .............................................. )",
+    footer:"Powered by THE LIVING PLUS",
+    emptyItem:"— 暂无项目 —",
+    payVia:"付款方式", none:"—",
+  }
+};
+const ID_TYPES = ["idcard","taxid","passport","companyreg","companytax"];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {
+  lang:'th',
+  docType:'invoice',
+  docNumber:'',
+  date: new Date().toISOString().slice(0,10),
+  partyA:{name:'THE LIVING PLUS', address:'', idType:'taxid', idNumber:'', phone:''},
+  partyB:{name:'', address:'', idType:'idcard', idNumber:'', phone:''},
+  items:[{desc:'', amount:''}],
+  whtMode:'none', // 'none' | 'deduct' | 'add'
+  whtPct:5,
+  payMethod:'transfer',
+  bankName:'', accName:'THE LIVING PLUS', accNumber:'',
+  showBrand:false,
+  brandLogo:'', // data URL
+  brandName:'THE LIVING PLUS',
+  brandSlogan:'Real Estate Advisory & Brokerage'
+};
+
+/* ============================================================
+   NUMBER -> THAI TEXT
+   ============================================================ */
+function thaiBahtText(numStr){
+  let n = parseFloat(numStr || 0);
+  if (isNaN(n)) n = 0;
+  n = Math.round(n * 100) / 100;
+  const neg = n < 0; n = Math.abs(n);
+  const intPart = Math.floor(n);
+  const satang = Math.round((n - intPart) * 100);
+
+  const digits = ["ศูนย์","หนึ่ง","สอง","สาม","สี่","ห้า","หก","เจ็ด","แปด","เก้า"];
+  const positions = ["","สิบ","ร้อย","พัน","หมื่น","แสน"];
+
+  function convert(numInt){
+    if (numInt === 0) return "ศูนย์";
+    let str = String(numInt);
+    let len = str.length;
+    let result = "";
+    for (let i=0; i<len; i++){
+      const d = parseInt(str[i]);
+      const posFromRight = len - i - 1;
+      const groupPos = posFromRight % 6;
+      const millionGroups = Math.floor(posFromRight / 6);
+      if (d !== 0){
+        if (groupPos === 0 && d === 1 && len > 1 && !(millionGroups>0 && posFromRight%6===0 && i===0)){
+          result += "เอ็ด";
+        } else if (groupPos === 1 && d === 1){
+          result += "สิบ";
+        } else if (groupPos === 1 && d === 2){
+          result += "ยี่สิบ";
+        } else {
+          result += digits[d] + positions[groupPos];
+        }
+      }
+      if (posFromRight > 0 && posFromRight % 6 === 0){
+        result += "ล้าน";
+      }
+    }
+    return result;
+  }
+
+  let text = convert(intPart) + "บาท";
+  if (satang > 0){
+    text += convert(satang) + "สตางค์";
+  } else {
+    text += "ถ้วน";
+  }
+  return (neg ? "ลบ" : "") + text;
+}
+
+/* ============================================================
+   NUMBER -> ENGLISH TEXT
+   ============================================================ */
+function englishBahtText(numStr){
+  let n = parseFloat(numStr || 0);
+  if (isNaN(n)) n = 0;
+  n = Math.round(n * 100) / 100;
+  const neg = n < 0; n = Math.abs(n);
+  const intPart = Math.floor(n);
+  const satang = Math.round((n - intPart) * 100);
+
+  const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+    "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const tens = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+
+  function threeDigits(num){
+    let s = "";
+    if (num >= 100){
+      s += ones[Math.floor(num/100)] + " Hundred ";
+      num %= 100;
+    }
+    if (num >= 20){
+      s += tens[Math.floor(num/10)] + " ";
+      num %= 10;
+      if (num>0) s += ones[num] + " ";
+    } else if (num > 0){
+      s += ones[num] + " ";
+    }
+    return s.trim();
+  }
+
+  function convert(numInt){
+    if (numInt === 0) return "Zero";
+    const scales = [
+      {v:1000000000,n:"Billion"},
+      {v:1000000,n:"Million"},
+      {v:1000,n:"Thousand"},
+      {v:1,n:""}
+    ];
+    let result = "";
+    let remain = numInt;
+    for (const sc of scales){
+      if (remain >= sc.v){
+        const chunk = Math.floor(remain / sc.v);
+        remain %= sc.v;
+        result += threeDigits(chunk) + (sc.n ? " " + sc.n : "") + " ";
+      }
+    }
+    return result.trim();
+  }
+
+  let text = convert(intPart) + " Baht";
+  if (satang > 0){
+    text += " and " + convert(satang) + " Satang";
+  } else {
+    text += " Only";
+  }
+  return (neg ? "Negative " : "") + text;
+}
+
+/* ============================================================
+   NUMBER -> CHINESE TEXT (formal / 大写)
+   ============================================================ */
+function chineseBahtText(numStr){
+  let n = parseFloat(numStr || 0);
+  if (isNaN(n)) n = 0;
+  n = Math.round(n * 100) / 100;
+  const neg = n < 0; n = Math.abs(n);
+  const intPart = Math.floor(n);
+  const cents = Math.round((n - intPart) * 100);
+  const jiao = Math.floor(cents / 10);
+  const fen = cents % 10;
+
+  const digits = ["零","壹","贰","叁","肆","伍","陆","柒","捌","玖"];
+  const units = ["","拾","佰","仟"];
+  const bigUnits = ["","万","亿","兆"];
+
+  function convertGroup(str4){
+    let result = "";
+    let zeroFlag = false;
+    for (let i=0; i<str4.length; i++){
+      const d = parseInt(str4[i]);
+      const pos = str4.length - i - 1;
+      if (d === 0){
+        zeroFlag = true;
+      } else {
+        if (zeroFlag && result !== ""){ result += "零"; }
+        zeroFlag = false;
+        result += digits[d] + units[pos];
+      }
+    }
+    return result;
+  }
+
+  function convertInt(num){
+    if (num === 0) return "零";
+    let str = String(num);
+    let groups = [];
+    while (str.length > 0){
+      groups.unshift(str.slice(-4));
+      str = str.slice(0, -4);
+    }
+    let result = "";
+    for (let i=0; i<groups.length; i++){
+      const g = groups[i];
+      const gNum = parseInt(g);
+      const bigUnit = bigUnits[groups.length - 1 - i];
+      if (gNum !== 0){
+        if (g[0] === '0' && result !== ""){ result += "零"; }
+        result += convertGroup(g) + bigUnit;
+      } else if (result !== "" && i < groups.length - 1){
+        result += "";
+      }
+    }
+    return result;
+  }
+
+  let text = convertInt(intPart) + "泰铢";
+  if (jiao === 0 && fen === 0){
+    text += "整";
+  } else {
+    if (jiao > 0){
+      text += digits[jiao] + "角";
+    } else if (fen > 0){
+      text += "零";
+    }
+    if (fen > 0){
+      text += digits[fen] + "分";
+    }
+  }
+  return (neg ? "负" : "") + text;
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmt(n){
+  n = parseFloat(n || 0);
+  if (isNaN(n)) n = 0;
+  return n.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function subtotal(){
+  return state.items.reduce((s,it)=> s + (parseFloat(it.amount)||0), 0);
+}
+function whtAmount(){
+  return state.whtMode !== 'none' ? subtotal() * (state.whtPct/100) : 0;
+}
+function grandTotal(){
+  if (state.whtMode === 'deduct') return subtotal() - whtAmount();
+  if (state.whtMode === 'add') return subtotal() + whtAmount();
+  return subtotal();
+}
+function formatPhone(value){
+  let d = (value || '').replace(/\D/g,'').slice(0,10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+  return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6,10);
+}
+function formatDate(dateStr, lang){
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const monthsTh = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  const monthsEn = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const monthsZh = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  if (lang==='th') return `${d.getDate()} ${monthsTh[d.getMonth()]} ${d.getFullYear()+543}`;
+  if (lang==='zh') return `${d.getFullYear()}年${monthsZh[d.getMonth()]}${d.getDate()}日`;
+  return `${monthsEn[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/* ============================================================
+   RENDER: FORM (static labels)
+   ============================================================ */
+function idTypeOptions(t, selected){
+  return ID_TYPES.map(k=>`<option value="${k}" ${k===selected?'selected':''}>${t[k]}</option>`).join('');
+}
+
+function renderStaticLabels(){
+  const t = T[state.lang];
+  document.getElementById('uiSubtitle').textContent = t.subtitle;
+  document.getElementById('lblDocInfo').textContent = t.docInfo;
+  document.getElementById('lblDocNumber').textContent = state.docType==='invoice' ? t.docNumberInv : t.docNumberRcp;
+  document.getElementById('lblDate').textContent = t.date;
+  document.getElementById('lblPartyA').textContent = state.docType==='invoice' ? t.partyA_inv : t.partyA_rcp;
+  document.getElementById('lblPartyB').textContent = state.docType==='invoice' ? t.partyB_inv : t.partyB_rcp;
+  document.getElementById('lblItems').textContent = t.items;
+  document.getElementById('lblAddItem').textContent = t.addItem;
+  document.getElementById('lblWht').textContent = t.whtSection;
+  document.getElementById('lblWhtNone').textContent = t.whtNone;
+  document.getElementById('lblWhtDeduct').textContent = t.whtDeduct;
+  document.getElementById('lblWhtAdd').textContent = t.whtAdd;
+  document.getElementById('lblWhtPct').textContent = t.whtRate;
+  document.getElementById('lblBrandSection').textContent = t.brandSection;
+  document.getElementById('lblBrandShow').textContent = t.brandShow;
+  document.getElementById('lblBrandLogo').textContent = t.brandLogo;
+  document.getElementById('lblBrandName').textContent = t.brandName;
+  document.getElementById('lblBrandSlogan').textContent = t.brandSlogan;
+  document.getElementById('lblPayment').textContent = t.payment;
+  document.getElementById('lblTransfer').textContent = t.transfer;
+  document.getElementById('lblCash').textContent = t.cash;
+  document.getElementById('lblBankName').textContent = t.bankName;
+  document.getElementById('lblAccName').textContent = t.accName;
+  document.getElementById('lblAccNumber').textContent = t.accNumber;
+  document.getElementById('lblGenerate').textContent = t.generate;
+  document.getElementById('btnInvoice').textContent = t.invoice;
+  document.getElementById('btnReceipt').textContent = t.receipt;
+  document.getElementById('docNumber').placeholder = state.docType==='invoice' ? 'INV-2026-001' : 'RCP-2026-001';
+}
+
+function renderPartyFields(){
+  const t = T[state.lang];
+  function fieldsHtml(party, key){
+    return `
+      <label>${t.name}</label>
+      <input type="text" data-party="${key}" data-field="name" value="${escAttr(party.name)}">
+      <label>${t.address}</label>
+      <textarea data-party="${key}" data-field="address" rows="2">${party.address}</textarea>
+      <div class="row2">
+        <div>
+          <label>${t.idType}</label>
+          <select data-party="${key}" data-field="idType">${idTypeOptions(t, party.idType)}</select>
+        </div>
+        <div>
+          <label>${t.idNumber}</label>
+          <input type="text" data-party="${key}" data-field="idNumber" value="${escAttr(party.idNumber)}">
+        </div>
+      </div>
+      <label>${t.phone}</label>
+      <input type="text" data-party="${key}" data-field="phone" value="${escAttr(party.phone)}">
+    `;
+  }
+  document.getElementById('partyAFields').innerHTML = fieldsHtml(state.partyA, 'A');
+  document.getElementById('partyBFields').innerHTML = fieldsHtml(state.partyB, 'B');
+  bindPartyInputs();
+}
+
+function bindPartyInputs(){
+  document.querySelectorAll('[data-party]').forEach(el=>{
+    el.addEventListener('input', e=>{
+      const p = e.target.dataset.party === 'A' ? state.partyA : state.partyB;
+      let val = e.target.value;
+      if (e.target.dataset.field === 'phone'){
+        val = formatPhone(val);
+        e.target.value = val;
+      }
+      p[e.target.dataset.field] = val;
+      renderPreview();
+    });
+  });
+}
+
+function renderItemFields(){
+  const t = T[state.lang];
+  const wrap = document.getElementById('itemsFields');
+  wrap.innerHTML = state.items.map((it, idx)=>`
+    <div class="item-row" data-idx="${idx}">
+      <textarea data-field="desc" placeholder="${t.desc}" rows="2">${it.desc}</textarea>
+      <input type="number" step="0.01" data-field="amount" placeholder="0.00" value="${it.amount}">
+      <button class="icon-btn" data-remove="${idx}" title="remove">×</button>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('textarea,input').forEach(el=>{
+    el.addEventListener('input', e=>{
+      const idx = e.target.closest('.item-row').dataset.idx;
+      state.items[idx][e.target.dataset.field] = e.target.value;
+      renderPreview();
+    });
+  });
+  wrap.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = e.target.dataset.remove;
+      if (state.items.length > 1){
+        state.items.splice(idx,1);
+      } else {
+        state.items[0] = {desc:'', amount:''};
+      }
+      renderItemFields();
+      renderPreview();
+    });
+  });
+}
+
+/* ============================================================
+   RENDER: PREVIEW DOCUMENT
+   ============================================================ */
+function displayFont(lang){
+  if (lang==='zh') return "var(--font-disp-zh)";
+  if (lang==='en') return "var(--font-disp-en)";
+  return "var(--font-disp-th)";
+}
+
+function renderPreview(){
+  const t = T[state.lang];
+  const lang = state.lang;
+  const isInvoice = state.docType === 'invoice';
+  const labelA = isInvoice ? t.partyA_inv : t.partyA_rcp;
+  const labelB = isInvoice ? t.partyB_inv : t.partyB_rcp;
+  const signA = isInvoice ? t.signA_inv : t.signA_rcp;
+  const signB = isInvoice ? t.signB_inv : t.signB_rcp;
+  const titleWord = isInvoice ? t.invoice : t.receipt;
+
+  function partyBlock(label, p){
+    const idLabel = t[p.idType];
+    const lines = [];
+    if (p.address) lines.push(`<div class="pline">${escHtml(p.address).replace(/\n/g,'<br>')}</div>`);
+    if (p.idNumber) lines.push(`<div class="pline"><span class="k">${idLabel}:</span> ${escHtml(p.idNumber)}</div>`);
+    if (p.phone) lines.push(`<div class="pline"><span class="k">${t.phone}:</span> ${escHtml(p.phone)}</div>`);
+    return `
+      <div class="party">
+        <h4>${label}</h4>
+        <div class="pname">${escHtml(p.name) || '&nbsp;'}</div>
+        ${lines.join('')}
+      </div>
+    `;
+  }
+
+  const itemRows = state.items.filter(it=>it.desc || it.amount).length
+    ? state.items.map(it=>`
+        <tr>
+          <td>${escHtml(it.desc).replace(/\n/g,'<br>') || '&nbsp;'}</td>
+          <td class="num">${it.amount!=='' ? fmt(it.amount) : ''}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="2" class="empty-note">${t.emptyItem}</td></tr>`;
+
+  const sub = subtotal();
+  const wht = whtAmount();
+  const grand = grandTotal();
+
+  const totalsHtml = `
+    <div class="totals-inner">
+      <div class="r"><span>${t.subtotal}</span><span>${fmt(sub)}</span></div>
+      ${state.whtMode === 'deduct' ? `<div class="r wht"><span>${t.wht} (${state.whtPct}%)</span><span>-${fmt(wht)}</span></div>` : ''}
+      ${state.whtMode === 'add' ? `<div class="r wht" style="color:var(--maroon-deep)"><span>${t.wht} (${state.whtPct}%)</span><span>+${fmt(wht)}</span></div>` : ''}
+      <div class="r grand"><span>${state.whtMode!=='none' ? t.netTotal : t.total}</span><span>${fmt(grand)} ฿</span></div>
+    </div>
+  `;
+
+  const wordsFn = state.lang === 'th' ? thaiBahtText : (state.lang === 'zh' ? chineseBahtText : englishBahtText);
+  const wordsLine = wordsFn(grand);
+
+  const paymentHtml = state.payMethod === 'transfer'
+    ? `
+      <div class="payment-box">
+        <h4>${t.payment}</h4>
+        <div class="bank-line">${t.payVia}: ${t.transfer}</div>
+        ${state.bankName ? `<div class="bank-line">${t.bankName}: ${escHtml(state.bankName)}</div>` : ''}
+        ${state.accName ? `<div class="bank-line">${t.accName}: ${escHtml(state.accName)}</div>` : ''}
+        ${state.accNumber ? `<div class="bank-line">${t.accNumber}: ${escHtml(state.accNumber)}</div>` : ''}
+      </div>`
+    : `
+      <div class="payment-box">
+        <h4>${t.payment}</h4>
+        <div class="bank-line">${t.payVia}: ${t.cash}</div>
+      </div>`;
+
+  document.getElementById('previewDoc').innerHTML = `
+    <div class="doc-head">
+      ${state.showBrand ? `
+      <div class="doc-brand">
+        ${state.brandLogo
+          ? `<img src="${state.brandLogo}" alt="logo" style="width:56px;height:56px;object-fit:contain;">`
+          : `<div class="seal-lg">${escHtml((state.brandName||'').split(/\s+/).map(w=>w[0]).join('').slice(0,3).toUpperCase() || 'TLP')}</div>`}
+        <div class="brand-text">
+          <div class="name">${escHtml(state.brandName)}</div>
+          ${state.brandSlogan ? `<div class="tag">${escHtml(state.brandSlogan)}</div>` : ''}
+        </div>
+      </div>` : `<div></div>`}
+      <div class="doc-title">
+        <div class="main" style="font-family:${displayFont(lang)}">${titleWord}</div>
+        <div class="sub">${lang!=='en' ? (isInvoice? T.en.invoice : T.en.receipt) : ''}</div>
+        ${state.docNumber ? `<div class="num">${isInvoice ? t.docNumShortInv : t.docNumShortRcp}: <b>${escHtml(state.docNumber)}</b></div>` : ''}
+        <div class="num">${t.date}: <b>${formatDate(state.date, lang)}</b></div>
+      </div>
+    </div>
+    <hr class="hr">
+
+    <div class="parties">
+      ${partyBlock(labelA, state.partyA)}
+      ${partyBlock(labelB, state.partyB)}
+    </div>
+
+    <table class="items">
+      <thead><tr><th>${t.desc}</th><th class="num">${t.amount}</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <div class="totals">${totalsHtml}</div>
+    <div class="words-band">${wordsLine}</div>
+
+    ${paymentHtml}
+
+    <div class="sign-area">
+      <div class="sign-box">
+        <div class="sign-line"></div>
+        <div class="role">${signA}</div>
+        <div>${t.printedName}</div>
+        <div class="date-line">${t.signDate}: ____ / ____ / ____</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-line"></div>
+        <div class="role">${signB}</div>
+        <div>${t.printedName}</div>
+        <div class="date-line">${t.signDate}: ____ / ____ / ____</div>
+      </div>
+    </div>
+
+    <div class="doc-footer">${t.footer}</div>
+  `;
+}
+
+function escHtml(s){
+  return (s||'').toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return escHtml(s).replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   TOP CONTROLS
+   ============================================================ */
+document.getElementById('langSeg').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-lang]');
+  if (!btn) return;
+  state.lang = btn.dataset.lang;
+  document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('active', b===btn));
+  document.body.className = 'lang-' + state.lang;
+  fullRender();
+});
+
+document.getElementById('docTypeSeg').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-doctype]');
+  if (!btn) return;
+  state.docType = btn.dataset.doctype;
+  document.querySelectorAll('#docTypeSeg button').forEach(b=>b.classList.toggle('active', b===btn));
+  fullRender();
+});
+
+document.getElementById('docNumber').addEventListener('input', e=>{
+  state.docNumber = e.target.value; renderPreview();
+});
+document.getElementById('docDate').addEventListener('input', e=>{
+  state.date = e.target.value; renderPreview();
+});
+document.getElementById('addItemBtn').addEventListener('click', ()=>{
+  state.items.push({desc:'', amount:''});
+  renderItemFields();
+  renderPreview();
+});
+document.querySelectorAll('input[name=whtmode]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    state.whtMode = e.target.value;
+    document.getElementById('whtPctWrap').style.display = state.whtMode !== 'none' ? 'block' : 'none';
+    renderPreview();
+  });
+});
+document.getElementById('whtPct').addEventListener('change', e=>{
+  state.whtPct = parseFloat(e.target.value);
+  renderPreview();
+});
+document.querySelectorAll('input[name=paymethod]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    state.payMethod = e.target.value;
+    document.getElementById('bankFields').style.display = state.payMethod==='transfer' ? 'block' : 'none';
+    renderPreview();
+  });
+});
+document.getElementById('bankName').addEventListener('input', e=>{state.bankName = e.target.value; renderPreview();});
+document.getElementById('accName').addEventListener('input', e=>{state.accName = e.target.value; renderPreview();});
+document.getElementById('accNumber').addEventListener('input', e=>{state.accNumber = e.target.value; renderPreview();});
+
+document.getElementById('showBrand').addEventListener('change', e=>{
+  state.showBrand = e.target.checked;
+  document.getElementById('brandFieldsWrap').style.display = state.showBrand ? 'block' : 'none';
+  renderPreview();
+});
+document.getElementById('brandLogoInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if (!file) { state.brandLogo = ''; renderPreview(); return; }
+  const reader = new FileReader();
+  reader.onload = ev=>{ state.brandLogo = ev.target.result; renderPreview(); };
+  reader.readAsDataURL(file);
+});
+document.getElementById('brandNameInput').addEventListener('input', e=>{state.brandName = e.target.value; renderPreview();});
+document.getElementById('brandSloganInput').addEventListener('input', e=>{state.brandSlogan = e.target.value; renderPreview();});
+
+/* ============================================================
+   PDF EXPORT
+   ============================================================ */
+document.getElementById('generateBtn').addEventListener('click', async ()=>{
+  const t = T[state.lang];
+  const btn = document.getElementById('generateBtn');
+  const label = document.getElementById('lblGenerate');
+  const originalText = label.textContent;
+  btn.disabled = true;
+  label.textContent = t.generating;
+  try {
+    const node = document.getElementById('previewDoc');
+    const canvas = await html2canvas(node, {scale:3, backgroundColor:'#ffffff', useCORS:true});
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pageW = 210, pageH = 297;
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0){
+      position = heightLeft - imgH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+    const typeWord = state.docType==='invoice' ? 'Invoice' : 'Receipt';
+    const numPart = state.docNumber ? state.docNumber.replace(/[^a-zA-Z0-9-]/g,'') : state.date;
+    pdf.save(`TheLivingPlus_${typeWord}_${numPart}.pdf`);
+  } catch(err){
+    alert((state.lang==='th' ? 'เกิดข้อผิดพลาดในการสร้าง PDF: ' : state.lang==='zh' ? '生成PDF时出错：' : 'Error generating PDF: ') + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    label.textContent = originalText;
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function fullRender(){
+  renderStaticLabels();
+  renderPartyFields();
+  renderItemFields();
+  renderPreview();
+}
+document.getElementById('docDate').value = state.date;
+fullRender();
+</script>
+</body>
+</html>
