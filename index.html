@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --maroon:#6B1220;
@@ -296,6 +297,71 @@
   }
 
   .empty-note{color:var(--ink-soft);font-style:italic;}
+
+  /* ---------- View tabs ---------- */
+  .viewbar{
+    background:#fff;border-bottom:1px solid var(--line);
+    padding:0 28px;display:flex;
+  }
+  .viewbar-tabs{display:flex;gap:4px;}
+  .viewtab{
+    background:none;border:none;padding:13px 16px;font-size:13.5px;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;font-family:inherit;border-bottom:2.5px solid transparent;
+    margin-bottom:-1px;
+  }
+  .viewtab.active{color:var(--maroon);border-bottom-color:var(--maroon);}
+  .viewtab:hover{color:var(--maroon-deep);}
+
+  /* ---------- Editor toolbar ---------- */
+  .editor-toolbar{
+    background:#fff;border-bottom:1px solid var(--line);
+    padding:12px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+  .editor-status{font-size:13px;color:var(--ink-soft);}
+  .editor-status b{color:var(--maroon-deep);}
+  .editor-toolbar-actions{display:flex;gap:8px;}
+  .toolbar-btn{
+    background:var(--maroon);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);
+    font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .toolbar-btn:hover{background:var(--maroon-deep);}
+  .toolbar-btn.ghost{background:none;color:var(--maroon);border:1px solid var(--maroon);}
+  .toolbar-btn.ghost:hover{background:var(--line-soft);}
+  .drive-status{
+    font-size:12px;color:var(--ink-soft);padding:6px 10px;background:var(--line-soft);
+    border-radius:999px;display:inline-flex;align-items:center;gap:5px;
+  }
+  .drive-status.connected{color:#166534;background:#e9f7ef;}
+  .drive-status.syncing{color:#92600b;background:#fdf3dc;}
+
+  /* ---------- Library view ---------- */
+  .library-view{padding:28px;max-width:900px;margin:0 auto;}
+  .lib-note{font-size:12px;color:var(--ink-soft);margin-bottom:16px;}
+  .lib-empty{
+    text-align:center;color:var(--ink-soft);padding:60px 20px;font-size:14px;
+    border:1.5px dashed var(--line);border-radius:var(--radius);
+  }
+  .lib-row{
+    display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);
+    border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;flex-wrap:wrap;
+  }
+  .lib-badge{
+    font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    padding:4px 9px;border-radius:999px;color:#fff;background:var(--maroon);flex-shrink:0;
+  }
+  .lib-badge-receipt{background:#7a6a1f;}
+  .lib-badge-quotation{background:#3a6b6b;}
+  .lib-info{flex:1;min-width:160px;}
+  .lib-name{font-weight:700;font-size:14px;color:var(--ink);}
+  .lib-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .lib-actions{display:flex;gap:6px;flex-shrink:0;}
+  .lib-actions button{
+    background:none;border:1px solid var(--line);padding:6px 12px;border-radius:var(--radius);
+    font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--ink);
+  }
+  .lib-actions button:hover{background:var(--line-soft);}
+  .lib-actions button.danger{color:var(--danger);border-color:#ecc9c5;}
+  .lib-actions button.danger:hover{background:#FBEAE8;}
 </style>
 </head>
 <body class="lang-th">
@@ -319,7 +385,24 @@
   </div>
 </div>
 
-<div class="layout">
+<div class="viewbar">
+  <div class="viewbar-tabs">
+    <button class="viewtab active" data-view="editor" id="tabEditor">สร้าง/แก้ไขเอกสาร</button>
+    <button class="viewtab" data-view="library" id="tabLibrary">คลังเอกสาร <span id="libCount">(0)</span></button>
+  </div>
+</div>
+
+<div class="editor-toolbar" id="editorToolbar">
+  <div class="editor-status" id="editorStatus">เอกสารใหม่ (ยังไม่บันทึก)</div>
+  <div class="editor-toolbar-actions">
+    <span class="drive-status" id="driveStatus">ไม่ได้เชื่อมต่อ Google Drive</span>
+    <button class="toolbar-btn ghost" id="driveConnectBtn">เชื่อมต่อ Google Drive</button>
+    <button class="toolbar-btn ghost" id="newDocBtn">+ เอกสารใหม่</button>
+    <button class="toolbar-btn" id="saveDocBtn">บันทึกลงคลัง</button>
+  </div>
+</div>
+
+<div class="layout" id="editorView">
   <!-- ================= FORM PANE ================= -->
   <div class="form-pane">
 
@@ -426,6 +509,12 @@
   </div>
 </div>
 
+<!-- ================= LIBRARY VIEW ================= -->
+<div class="library-view" id="libraryView" style="display:none">
+  <div class="lib-note" id="libSavedNote">* บันทึกไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ยังไม่ผูกกับบัญชีหรือซิงก์ข้ามอุปกรณ์</div>
+  <div id="libraryList"></div>
+</div>
+
 <script>
 /* ============================================================
    TRANSLATIONS
@@ -459,6 +548,17 @@ const T = {
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— ยังไม่มีรายการ —",
     payVia:"ชำระโดย", none:"—",
+    tabEditor:"สร้าง/แก้ไขเอกสาร", tabLibrary:"คลังเอกสาร",
+    newDoc:"+ เอกสารใหม่", saveDoc:"บันทึกลงคลัง", savedMsg:"บันทึกแล้ว",
+    statusNew:"เอกสารใหม่ (ยังไม่บันทึก)", statusEditing:"กำลังแก้ไข:",
+    libEmpty:"ยังไม่มีเอกสารที่บันทึกไว้ กดปุ่ม \"บันทึกลงคลัง\" หลังกรอกข้อมูลเพื่อเก็บไว้ที่นี่",
+    libEdit:"แก้ไข", libDuplicate:"คัดลอก", libDelete:"ลบ",
+    libConfirmDelete:"ต้องการลบเอกสารนี้ใช่ไหม? (ลบแล้วกู้คืนไม่ได้)",
+    libSavedNote:"* บันทึกไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ยังไม่ผูกกับบัญชีหรือซิงก์ข้ามอุปกรณ์",
+    driveNotConnected:"ไม่ได้เชื่อมต่อ Google Drive", driveConnect:"เชื่อมต่อ Google Drive",
+    driveConnected:"เชื่อมต่อ Google Drive แล้ว", driveSyncing:"กำลังซิงก์กับ Google Drive...",
+    driveDisconnect:"ออกจากระบบ Drive", driveNotConfigured:"ยังไม่ได้ตั้งค่า Client ID (ดูคำแนะนำในแชท)",
+    driveSyncError:"ซิงก์กับ Google Drive ไม่สำเร็จ: ", driveNoteSynced:"* บันทึกในเบราว์เซอร์นี้ และซิงก์ขึ้น Google Drive ของคุณอัตโนมัติ เปิดจากเบราว์เซอร์/เครื่องอื่นแล้วกด \"เชื่อมต่อ Google Drive\" เพื่อดึงข้อมูลกลับมา",
   },
   en:{
     subtitle:"Document Generator", invoice:"INVOICE", receipt:"RECEIPT", quotation:"QUOTATION",
@@ -488,6 +588,17 @@ const T = {
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— No items —",
     payVia:"Paid via", none:"—",
+    tabEditor:"Create / Edit", tabLibrary:"Library",
+    newDoc:"+ New Document", saveDoc:"Save to Library", savedMsg:"Saved",
+    statusNew:"New document (not saved)", statusEditing:"Editing:",
+    libEmpty:"No saved documents yet. Click \"Save to Library\" after filling in the form to keep it here.",
+    libEdit:"Edit", libDuplicate:"Duplicate", libDelete:"Delete",
+    libConfirmDelete:"Delete this document? This cannot be undone.",
+    libSavedNote:"* Saved in this browser only — not yet linked to an account or synced across devices.",
+    driveNotConnected:"Not connected to Google Drive", driveConnect:"Connect Google Drive",
+    driveConnected:"Connected to Google Drive", driveSyncing:"Syncing with Google Drive...",
+    driveDisconnect:"Disconnect Drive", driveNotConfigured:"Client ID not set up yet (see chat instructions)",
+    driveSyncError:"Google Drive sync failed: ", driveNoteSynced:"* Saved in this browser and auto-synced to your Google Drive. Open from another browser/device and click \"Connect Google Drive\" to pull it back.",
   },
   zh:{
     subtitle:"单据生成系统", invoice:"发票", receipt:"收据", quotation:"报价单",
@@ -517,6 +628,17 @@ const T = {
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— 暂无项目 —",
     payVia:"付款方式", none:"—",
+    tabEditor:"新建/编辑单据", tabLibrary:"单据库",
+    newDoc:"+ 新建单据", saveDoc:"保存到单据库", savedMsg:"已保存",
+    statusNew:"新单据（尚未保存）", statusEditing:"正在编辑：",
+    libEmpty:"还没有已保存的单据。填写表单后点击「保存到单据库」即可保存在这里。",
+    libEdit:"编辑", libDuplicate:"复制", libDelete:"删除",
+    libConfirmDelete:"确定要删除这份单据吗？删除后无法恢复。",
+    libSavedNote:"* 仅保存在此浏览器中，尚未关联账号或跨设备同步。",
+    driveNotConnected:"尚未连接 Google Drive", driveConnect:"连接 Google Drive",
+    driveConnected:"已连接 Google Drive", driveSyncing:"正在与 Google Drive 同步...",
+    driveDisconnect:"断开 Drive 连接", driveNotConfigured:"尚未设置 Client ID（请查看聊天中的说明）",
+    driveSyncError:"与 Google Drive 同步失败：", driveNoteSynced:"* 已保存在此浏览器，并自动同步到您的 Google Drive。在其他浏览器/设备打开后点击「连接 Google Drive」即可取回数据。",
   }
 };
 const ID_TYPES = ["idcard","taxid","passport","companyreg","companytax"];
@@ -529,25 +651,29 @@ const DOC_META = {
 /* ============================================================
    STATE
    ============================================================ */
-let state = {
-  lang:'th',
-  docType:'invoice',
-  docNumber:'',
-  date: new Date().toISOString().slice(0,10),
-  validUntil:'',
-  partyA:{name:'THE LIVING PLUS', address:'', idType:'taxid', idNumber:'', phone:''},
-  partyB:{name:'', address:'', idType:'idcard', idNumber:'', phone:''},
-  items:[{desc:'', amount:''}],
-  whtMode:'none', // 'none' | 'deduct' | 'add'
-  whtPct:5,
-  payMethod:'transfer',
-  bankName:'', accName:'THE LIVING PLUS', accNumber:'',
-  showBrand:false,
-  brandLogo:'', // data URL
-  brandLogoSize:56,
-  brandName:'THE LIVING PLUS',
-  brandSlogan:'Real Estate Advisory & Brokerage'
-};
+function makeDefaultState(){
+  return {
+    lang:'th',
+    docType:'invoice',
+    docNumber:'',
+    date: new Date().toISOString().slice(0,10),
+    validUntil:'',
+    partyA:{name:'THE LIVING PLUS', address:'', idType:'taxid', idNumber:'', phone:''},
+    partyB:{name:'', address:'', idType:'idcard', idNumber:'', phone:''},
+    items:[{desc:'', amount:''}],
+    whtMode:'none', // 'none' | 'deduct' | 'add'
+    whtPct:5,
+    payMethod:'transfer',
+    bankName:'', accName:'THE LIVING PLUS', accNumber:'',
+    showBrand:false,
+    brandLogo:'', // data URL
+    brandLogoSize:56,
+    brandName:'THE LIVING PLUS',
+    brandSlogan:'Real Estate Advisory & Brokerage',
+    currentDocId:null // set when editing a saved library record
+  };
+}
+let state = makeDefaultState();
 
 /* ============================================================
    NUMBER -> THAI TEXT
@@ -741,16 +867,19 @@ function fmt(n){
   if (isNaN(n)) n = 0;
   return n.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
-function subtotal(){
-  return state.items.reduce((s,it)=> s + (parseFloat(it.amount)||0), 0);
+function subtotal(d){
+  d = d || state;
+  return (d.items||[]).reduce((s,it)=> s + (parseFloat(it.amount)||0), 0);
 }
-function whtAmount(){
-  return state.whtMode !== 'none' ? subtotal() * (state.whtPct/100) : 0;
+function whtAmount(d){
+  d = d || state;
+  return d.whtMode !== 'none' ? subtotal(d) * (d.whtPct/100) : 0;
 }
-function grandTotal(){
-  if (state.whtMode === 'deduct') return subtotal() - whtAmount();
-  if (state.whtMode === 'add') return subtotal() + whtAmount();
-  return subtotal();
+function grandTotal(d){
+  d = d || state;
+  if (d.whtMode === 'deduct') return subtotal(d) - whtAmount(d);
+  if (d.whtMode === 'add') return subtotal(d) + whtAmount(d);
+  return subtotal(d);
 }
 function formatPhone(value){
   let d = (value || '').replace(/\D/g,'').slice(0,10);
@@ -812,6 +941,10 @@ function renderStaticLabels(){
   document.getElementById('btnReceipt').textContent = t.receipt;
   document.getElementById('btnQuotation').textContent = t.quotation;
   document.getElementById('docNumber').placeholder = meta.prefix + '-2026-001';
+  document.getElementById('tabEditor').textContent = t.tabEditor;
+  document.getElementById('tabLibrary').innerHTML = t.tabLibrary + ' <span id="libCount">(' + loadLibrary().length + ')</span>';
+  document.getElementById('newDocBtn').textContent = t.newDoc;
+  document.getElementById('saveDocBtn').textContent = t.saveDoc;
 }
 
 function renderPartyFields(){
@@ -1192,13 +1325,389 @@ document.getElementById('generateImgBtn').addEventListener('click', async ()=>{
 });
 
 /* ============================================================
+   LIBRARY: localStorage persistence (save / edit / duplicate / delete)
+   ============================================================ */
+const STORAGE_KEY = 'tlp_doc_library_v1';
+
+function genId(){
+  return 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+}
+function loadLibrary(){
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch(e){
+    console.error('Library read error', e);
+    return [];
+  }
+}
+function saveLibraryArr(arr){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    return true;
+  } catch(e){
+    console.error('Library write error', e);
+    const t = T[state.lang];
+    alert(state.lang==='th' ? 'บันทึกไม่สำเร็จ (พื้นที่จัดเก็บในเบราว์เซอร์อาจเต็ม)'
+      : state.lang==='zh' ? '保存失败（浏览器存储空间可能已满）'
+      : 'Save failed (browser storage may be full)');
+    return false;
+  }
+}
+
+function saveCurrentDoc(){
+  const lib = loadLibrary();
+  const clone = JSON.parse(JSON.stringify(state));
+  delete clone.currentDocId;
+  const id = state.currentDocId || genId();
+  const record = { id, savedAt: new Date().toISOString(), data: clone };
+  const idx = lib.findIndex(r=>r.id===id);
+  if (idx>=0) lib[idx] = record; else lib.push(record);
+  if (!saveLibraryArr(lib)) return;
+  state.currentDocId = id;
+  renderEditorStatus();
+  renderLibrary();
+  driveSyncUpIfConnected();
+}
+
+function loadDocById(id){
+  const lib = loadLibrary();
+  const rec = lib.find(r=>r.id===id);
+  if (!rec) return;
+  state = JSON.parse(JSON.stringify(rec.data));
+  state.currentDocId = rec.id;
+  document.getElementById('docDate').value = state.date;
+  switchView('editor');
+  fullRender();
+}
+
+function duplicateDocById(id){
+  const lib = loadLibrary();
+  const rec = lib.find(r=>r.id===id);
+  if (!rec) return;
+  const clone = JSON.parse(JSON.stringify(rec.data));
+  const newId = genId();
+  const newRecord = { id: newId, savedAt: new Date().toISOString(), data: clone };
+  lib.push(newRecord);
+  if (!saveLibraryArr(lib)) return;
+  loadDocById(newId);
+  driveSyncUpIfConnected();
+}
+
+function deleteDocById(id){
+  const t = T[state.lang];
+  if (!confirm(t.libConfirmDelete)) return;
+  let lib = loadLibrary();
+  lib = lib.filter(r=>r.id!==id);
+  saveLibraryArr(lib);
+  if (state.currentDocId === id){
+    state.currentDocId = null;
+    renderEditorStatus();
+  }
+  renderLibrary();
+  driveSyncUpIfConnected();
+}
+
+
+function renderEditorStatus(){
+  const t = T[state.lang];
+  const el = document.getElementById('editorStatus');
+  if (state.currentDocId){
+    const lib = loadLibrary();
+    const rec = lib.find(r=>r.id===state.currentDocId);
+    const name = rec ? (rec.data.partyB.name || rec.data.docNumber || '') : '';
+    el.innerHTML = `${t.statusEditing} <b>${escHtml(name) || '—'}</b>`;
+  } else {
+    el.textContent = t.statusNew;
+  }
+}
+
+function renderLibrary(){
+  const t = T[state.lang];
+  const lib = loadLibrary().slice().sort((a,b)=> new Date(b.savedAt) - new Date(a.savedAt));
+  document.getElementById('libCount').textContent = '(' + lib.length + ')';
+  document.getElementById('libSavedNote').textContent = t.libSavedNote;
+  const wrap = document.getElementById('libraryList');
+  if (lib.length === 0){
+    wrap.innerHTML = `<div class="lib-empty">${t.libEmpty}</div>`;
+    return;
+  }
+  wrap.innerHTML = lib.map(rec=>{
+    const d = rec.data;
+    const meta = DOC_META[d.docType] || DOC_META.invoice;
+    const t2 = T[d.lang] || T.th;
+    const total = grandTotal(d);
+    return `
+      <div class="lib-row">
+        <div class="lib-badge lib-badge-${d.docType}">${t2[meta.title]}</div>
+        <div class="lib-info">
+          <div class="lib-name">${escHtml(d.partyB.name) || '—'}</div>
+          <div class="lib-sub">${d.docNumber ? escHtml(d.docNumber) + ' • ' : ''}${formatDate(d.date, d.lang)} • ${fmt(total)} ฿</div>
+        </div>
+        <div class="lib-actions">
+          <button data-act="edit" data-id="${rec.id}">${t.libEdit}</button>
+          <button data-act="dup" data-id="${rec.id}">${t.libDuplicate}</button>
+          <button data-act="del" data-id="${rec.id}" class="danger">${t.libDelete}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   GOOGLE DRIVE SYNC (optional — personal cross-browser sync)
+   ------------------------------------------------------------
+   HOW TO SET UP (one-time, done by the site owner in Google
+   Cloud Console — see chat for the full step-by-step guide):
+     1. Create a Google Cloud project
+     2. Enable the "Google Drive API"
+     3. Configure the OAuth consent screen (External, Testing
+        mode, add your own Gmail as a Test user), scope:
+        https://www.googleapis.com/auth/drive.file
+     4. Create an OAuth Client ID (type: Web application) and
+        add this site's URL under "Authorized JavaScript origins"
+     5. Paste the Client ID below, replacing the placeholder.
+   ============================================================ */
+const GOOGLE_CLIENT_ID = 'PASTE_YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FOLDER_NAME = 'THE LIVING PLUS - เอกสาร';
+const DRIVE_LIBRARY_FILENAME = 'tlp_doc_library.json';
+
+let gDrive = {
+  tokenClient: null,
+  accessToken: null,
+  signedIn: false,
+  folderId: null,
+  fileId: null,
+  syncing: false
+};
+
+function driveConfigured(){
+  return GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.startsWith('PASTE_');
+}
+
+function initGoogleAuth(){
+  if (!driveConfigured()) return;
+  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+    // Google script may not have finished loading yet — retry shortly.
+    setTimeout(initGoogleAuth, 300);
+    return;
+  }
+  gDrive.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp)=>{
+      if (resp.error){
+        console.error('Google auth error', resp);
+        alert(T[state.lang].driveSyncError + resp.error);
+        return;
+      }
+      gDrive.accessToken = resp.access_token;
+      gDrive.signedIn = true;
+      updateDriveStatusUI();
+      await driveSyncDown();
+    }
+  });
+}
+
+function driveConnectClick(){
+  if (!driveConfigured()){
+    alert(T[state.lang].driveNotConfigured);
+    return;
+  }
+  if (gDrive.signedIn){
+    // already connected — treat as disconnect
+    if (gDrive.accessToken) google.accounts.oauth2.revoke(gDrive.accessToken, ()=>{});
+    gDrive.accessToken = null;
+    gDrive.signedIn = false;
+    updateDriveStatusUI();
+    return;
+  }
+  if (!gDrive.tokenClient){
+    alert(T[state.lang].driveNotConfigured);
+    return;
+  }
+  gDrive.tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function driveApi(path, opts){
+  opts = opts || {};
+  const res = await fetch('https://www.googleapis.com' + path, {
+    ...opts,
+    headers: Object.assign({}, opts.headers||{}, { 'Authorization': 'Bearer ' + gDrive.accessToken })
+  });
+  if (!res.ok){
+    const txt = await res.text();
+    throw new Error('Drive API ' + res.status + ': ' + txt);
+  }
+  return res;
+}
+
+async function driveFindOrCreateFolder(){
+  if (gDrive.folderId) return gDrive.folderId;
+  const q = encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res = await driveApi(`/drive/v3/files?q=${q}&fields=files(id,name)`);
+  const data = await res.json();
+  if (data.files && data.files.length){
+    gDrive.folderId = data.files[0].id;
+    return gDrive.folderId;
+  }
+  const createRes = await driveApi('/drive/v3/files', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType:'application/vnd.google-apps.folder' })
+  });
+  const created = await createRes.json();
+  gDrive.folderId = created.id;
+  return gDrive.folderId;
+}
+
+async function driveFindLibraryFile(){
+  const folderId = await driveFindOrCreateFolder();
+  const q = encodeURIComponent(`name='${DRIVE_LIBRARY_FILENAME}' and '${folderId}' in parents and trashed=false`);
+  const res = await driveApi(`/drive/v3/files?q=${q}&fields=files(id,name)`);
+  const data = await res.json();
+  if (data.files && data.files.length){
+    gDrive.fileId = data.files[0].id;
+    return gDrive.fileId;
+  }
+  gDrive.fileId = null;
+  return null;
+}
+
+async function driveSyncDown(){
+  try {
+    gDrive.syncing = true; updateDriveStatusUI();
+    const fileId = await driveFindLibraryFile();
+    if (fileId){
+      const res = await driveApi(`/drive/v3/files/${fileId}?alt=media`);
+      const remoteLib = await res.json();
+      saveLibraryArr(remoteLib);
+      renderLibrary();
+    } else {
+      await driveSyncUp();
+    }
+  } catch(e){
+    console.error(e);
+    alert(T[state.lang].driveSyncError + e.message);
+  } finally {
+    gDrive.syncing = false; updateDriveStatusUI();
+  }
+}
+
+async function driveSyncUp(){
+  if (!gDrive.signedIn) return;
+  try {
+    gDrive.syncing = true; updateDriveStatusUI();
+    const folderId = await driveFindOrCreateFolder();
+    if (!gDrive.fileId) await driveFindLibraryFile();
+    const content = JSON.stringify(loadLibrary());
+    if (gDrive.fileId){
+      await driveApi(`/upload/drive/v3/files/${gDrive.fileId}?uploadType=media`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: content
+      });
+    } else {
+      const boundary = 'tlp_boundary_314159265358979';
+      const metadata = { name: DRIVE_LIBRARY_FILENAME, parents:[folderId] };
+      const body =
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n` +
+        `--${boundary}--`;
+      const res = await driveApi('/upload/drive/v3/files?uploadType=multipart', {
+        method:'POST',
+        headers:{'Content-Type': `multipart/related; boundary=${boundary}`},
+        body
+      });
+      const created = await res.json();
+      gDrive.fileId = created.id;
+    }
+  } catch(e){
+    console.error(e);
+    alert(T[state.lang].driveSyncError + e.message);
+  } finally {
+    gDrive.syncing = false; updateDriveStatusUI();
+  }
+}
+
+function driveSyncUpIfConnected(){
+  if (gDrive.signedIn) driveSyncUp();
+}
+
+function updateDriveStatusUI(){
+  const t = T[state.lang];
+  const el = document.getElementById('driveStatus');
+  const btn = document.getElementById('driveConnectBtn');
+  if (!el || !btn) return;
+  el.classList.remove('connected','syncing');
+  if (gDrive.syncing){
+    el.textContent = t.driveSyncing;
+    el.classList.add('syncing');
+  } else if (gDrive.signedIn){
+    el.textContent = t.driveConnected;
+    el.classList.add('connected');
+    btn.textContent = t.driveDisconnect;
+  } else {
+    el.textContent = t.driveNotConnected;
+    btn.textContent = t.driveConnect;
+  }
+  document.getElementById('libSavedNote').textContent = gDrive.signedIn ? t.driveNoteSynced : t.libSavedNote;
+}
+
+document.getElementById('driveConnectBtn').addEventListener('click', driveConnectClick);
+initGoogleAuth();
+
+document.getElementById('libraryList').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.act === 'edit') loadDocById(id);
+  if (btn.dataset.act === 'dup') duplicateDocById(id);
+  if (btn.dataset.act === 'del') deleteDocById(id);
+});
+
+document.getElementById('saveDocBtn').addEventListener('click', saveCurrentDoc);
+document.getElementById('newDocBtn').addEventListener('click', ()=>{
+  const keepLang = state.lang;
+  const keepType = state.docType;
+  state = makeDefaultState();
+  state.lang = keepLang;
+  state.docType = keepType;
+  document.getElementById('docDate').value = state.date;
+  switchView('editor');
+  fullRender();
+});
+
+/* ============================================================
+   VIEW SWITCHING (Editor <-> Library)
+   ============================================================ */
+function switchView(view){
+  document.getElementById('editorToolbar').style.display = view==='editor' ? 'flex' : 'none';
+  document.getElementById('editorView').style.display = view==='editor' ? 'grid' : 'none';
+  document.getElementById('libraryView').style.display = view==='library' ? 'block' : 'none';
+  document.querySelectorAll('.viewtab').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
+  if (view==='library') renderLibrary();
+  if (view==='editor') scalePreview();
+}
+document.querySelectorAll('.viewtab').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchView(btn.dataset.view));
+});
+
+function syncTopbarActiveStates(){
+  document.querySelectorAll('#langSeg button').forEach(b=> b.classList.toggle('active', b.dataset.lang===state.lang));
+  document.querySelectorAll('#docTypeSeg button').forEach(b=> b.classList.toggle('active', b.dataset.doctype===state.docType));
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 function fullRender(){
+  syncTopbarActiveStates();
   renderStaticLabels();
   renderPartyFields();
   renderItemFields();
   renderPreview();
+  renderEditorStatus();
   scalePreview();
 }
 
