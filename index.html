@@ -85,8 +85,8 @@
   }
   .seg button{
     border:none;background:transparent;color:#fff;opacity:.65;
-    padding:7px 16px;border-radius:999px;font-size:13px;cursor:pointer;
-    font-family:inherit;font-weight:600;transition:.15s;
+    padding:7px 13px;border-radius:999px;font-size:12.5px;cursor:pointer;
+    font-family:inherit;font-weight:600;transition:.15s;white-space:nowrap;
   }
   .seg button.active{background:#fff;color:var(--maroon-deep);opacity:1;}
 
@@ -116,6 +116,12 @@
     flex-direction:column;
     align-items:center;
     gap:18px;
+    width:100%;
+  }
+  .preview-scale-box{
+    width:100%;
+    display:flex;
+    justify-content:center;
   }
 
   /* ---------- Form ---------- */
@@ -170,24 +176,37 @@
   .hint{font-size:11px;color:var(--ink-soft);margin-top:4px;}
   select#whtPct{width:110px;display:inline-block;}
 
-  .generate-btn{
+  .generate-row{
     position:sticky;bottom:0;
-    width:100%;
+    display:flex;
+    gap:10px;
+    box-shadow:0 -8px 20px -6px rgba(0,0,0,.25);
+  }
+  .generate-btn{
+    flex:1;
     background:var(--maroon);
     color:#fff;
     border:none;
     padding:16px;
-    font-size:15px;
+    font-size:14.5px;
     font-weight:700;
-    letter-spacing:.4px;
+    letter-spacing:.3px;
     border-radius:var(--radius);
     cursor:pointer;
-    box-shadow:0 -8px 20px -6px rgba(0,0,0,.25);
     font-family:inherit;
     transition:.15s;
   }
   .generate-btn:hover{background:var(--maroon-deep);}
   .generate-btn:disabled{opacity:.6;cursor:wait;}
+  .generate-btn.secondary-btn{
+    background:#fff;
+    color:var(--maroon);
+    border:1.4px solid var(--maroon);
+  }
+  .generate-btn.secondary-btn:hover{background:var(--line-soft);}
+  @media (max-width:480px){
+    .generate-row{flex-direction:column;}
+  }
 
   /* ---------- Document preview ---------- */
   #previewDoc{
@@ -197,9 +216,8 @@
     box-shadow:0 10px 40px -12px rgba(0,0,0,.35);
     padding:56px 60px 48px;
     position:relative;
-  }
-  @media (max-width:980px){
-    .preview-pane{overflow-x:auto;}
+    transform-origin:top center;
+    flex-shrink:0;
   }
   .doc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
   .doc-brand .seal-lg{
@@ -291,6 +309,7 @@
     <div class="seg" id="docTypeSeg">
       <button data-doctype="invoice" class="active" id="btnInvoice">ใบแจ้งหนี้</button>
       <button data-doctype="receipt" id="btnReceipt">ใบเสร็จ</button>
+      <button data-doctype="quotation" id="btnQuotation">ใบเสนอราคา</button>
     </div>
     <div class="seg" id="langSeg">
       <button data-lang="th" class="active">ไทย</button>
@@ -310,6 +329,10 @@
       <input type="text" id="docNumber" placeholder="เช่น INV-2026-001">
       <label id="lblDate">วันที่</label>
       <input type="date" id="docDate">
+      <div id="validUntilWrap" style="display:none">
+        <label id="lblValidUntil">ใช้ได้ถึงวันที่ (ไม่บังคับ)</label>
+        <input type="date" id="validUntilInput">
+      </div>
     </div>
 
     <div class="card">
@@ -321,6 +344,8 @@
       <div id="brandFieldsWrap" style="display:none">
         <label id="lblBrandLogo">อัปโหลดโลโก้</label>
         <input type="file" id="brandLogoInput" accept="image/*">
+        <label id="lblBrandLogoSize">ขนาดโลโก้ <span id="brandLogoSizeVal">56</span>px</label>
+        <input type="range" id="brandLogoSize" min="28" max="140" step="2" value="56">
         <label id="lblBrandName">ชื่อแบรนด์</label>
         <input type="text" id="brandNameInput" value="THE LIVING PLUS">
         <label id="lblBrandSlogan">สโลแกน</label>
@@ -383,14 +408,21 @@
       </div>
     </div>
 
-    <button class="generate-btn" id="generateBtn">
-      <span id="lblGenerate">สร้างเอกสาร</span>
-    </button>
+    <div class="generate-row">
+      <button class="generate-btn" id="generateBtn">
+        <span id="lblGenerate">สร้างเอกสาร (PDF)</span>
+      </button>
+      <button class="generate-btn secondary-btn" id="generateImgBtn">
+        <span id="lblGenerateImg">สร้างรูปภาพ (JPG)</span>
+      </button>
+    </div>
   </div>
 
   <!-- ================= PREVIEW PANE ================= -->
   <div class="preview-pane">
-    <div id="previewDoc"></div>
+    <div class="preview-scale-box" id="previewScaleBox">
+      <div id="previewDoc"></div>
+    </div>
   </div>
 </div>
 
@@ -400,78 +432,87 @@
    ============================================================ */
 const T = {
   th:{
-    subtitle:"ระบบออกเอกสาร", invoice:"ใบแจ้งหนี้", receipt:"ใบเสร็จรับเงิน",
-    docInfo:"ข้อมูลเอกสาร", docNumberInv:"เลขที่ใบแจ้งหนี้ (เว้นว่างได้)", docNumberRcp:"เลขที่ใบเสร็จ (เว้นว่างได้)",
-    date:"วันที่",
+    subtitle:"ระบบออกเอกสาร", invoice:"ใบแจ้งหนี้", receipt:"ใบเสร็จรับเงิน", quotation:"ใบเสนอราคา",
+    docInfo:"ข้อมูลเอกสาร", docNumberInv:"เลขที่ใบแจ้งหนี้ (เว้นว่างได้)", docNumberRcp:"เลขที่ใบเสร็จ (เว้นว่างได้)", docNumberQuo:"เลขที่ใบเสนอราคา (เว้นว่างได้)",
+    date:"วันที่", validUntil:"ใช้ได้ถึงวันที่ (ไม่บังคับ)", validUntilDoc:"ใช้ได้ถึงวันที่",
     partyA_inv:"ผู้ออกเอกสาร", partyB_inv:"ลูกค้า / ผู้รับใบแจ้งหนี้",
     partyA_rcp:"ผู้รับเงิน", partyB_rcp:"ผู้จ่ายเงิน",
+    partyA_quo:"ผู้เสนอราคา", partyB_quo:"ลูกค้า / ผู้รับใบเสนอราคา",
     name:"ชื่อ", address:"ที่อยู่", idType:"ประเภทเลขประจำตัว", idNumber:"เลขประจำตัว", phone:"เบอร์โทรศัพท์",
     idcard:"เลขบัตรประชาชน", taxid:"เลขประจำตัวผู้เสียภาษี", passport:"เลขพาสปอร์ต",
     companyreg:"เลขจดทะเบียนบริษัท", companytax:"เลขผู้เสียภาษีบริษัท",
     items:"รายการ", desc:"รายละเอียด", amount:"จำนวนเงิน (บาท)", addItem:"เพิ่มรายการ",
     subtotal:"ยอดรวม", wht:"ภาษีหัก ณ ที่จ่าย", netTotal:"ยอดสุทธิ", total:"ยอดรวมทั้งสิ้น",
-    docNumShortInv:"เลขที่ใบแจ้งหนี้", docNumShortRcp:"เลขที่ใบเสร็จ",
+    docNumShortInv:"เลขที่ใบแจ้งหนี้", docNumShortRcp:"เลขที่ใบเสร็จ", docNumShortQuo:"เลขที่ใบเสนอราคา",
     whtSection:"ภาษีหัก ณ ที่จ่าย", whtEnable:"มีการหักภาษี ณ ที่จ่าย", whtRate:"อัตราภาษี",
     whtNone:"ไม่มีภาษี", whtDeduct:"หัก ณ ที่จ่าย (หักออกจากยอด)", whtAdd:"บวกเพิ่ม (เพิ่มเข้ายอด)",
     brandSection:"โลโก้ / แบรนด์ (ไม่บังคับ)", brandShow:"แสดงโลโก้และข้อมูลแบรนด์บนเอกสาร",
-    brandLogo:"อัปโหลดโลโก้", brandName:"ชื่อแบรนด์", brandSlogan:"สโลแกน",
+    brandLogo:"อัปโหลดโลโก้", brandName:"ชื่อแบรนด์", brandSlogan:"สโลแกน", brandLogoSize:"ขนาดโลโก้",
     payment:"ช่องทางชำระเงิน", transfer:"โอนเงิน", cash:"เงินสด",
     bankName:"ธนาคาร", accName:"ชื่อบัญชี", accNumber:"เลขที่บัญชี",
-    words:"จำนวนเงินตัวอักษร", generate:"สร้างเอกสาร", generating:"กำลังสร้างไฟล์ PDF...",
+    words:"จำนวนเงินตัวอักษร", generate:"สร้างเอกสาร (PDF)", generating:"กำลังสร้างไฟล์ PDF...",
+    generateImg:"สร้างรูปภาพ (JPG)", generatingImg:"กำลังสร้างไฟล์รูปภาพ...",
     signA_inv:"ผู้ออกเอกสาร", signB_inv:"ลูกค้า",
     signA_rcp:"ผู้รับเงิน", signB_rcp:"ผู้จ่ายเงิน",
+    signA_quo:"ผู้เสนอราคา", signB_quo:"ลูกค้า",
     signDate:"วันที่ลงนาม", printedName:"( .............................................. )",
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— ยังไม่มีรายการ —",
     payVia:"ชำระโดย", none:"—",
   },
   en:{
-    subtitle:"Document Generator", invoice:"INVOICE", receipt:"RECEIPT",
-    docInfo:"Document Info", docNumberInv:"Invoice No. (optional)", docNumberRcp:"Receipt No. (optional)",
-    date:"Date",
+    subtitle:"Document Generator", invoice:"INVOICE", receipt:"RECEIPT", quotation:"QUOTATION",
+    docInfo:"Document Info", docNumberInv:"Invoice No. (optional)", docNumberRcp:"Receipt No. (optional)", docNumberQuo:"Quotation No. (optional)",
+    date:"Date", validUntil:"Valid Until (optional)", validUntilDoc:"Valid Until",
     partyA_inv:"Issued By", partyB_inv:"Customer / Bill To",
     partyA_rcp:"Received By", partyB_rcp:"Paid By",
+    partyA_quo:"Quoted By", partyB_quo:"Customer / Quote To",
     name:"Name", address:"Address", idType:"ID Type", idNumber:"ID Number", phone:"Phone",
     idcard:"National ID No.", taxid:"Tax ID No.", passport:"Passport No.",
     companyreg:"Company Registration No.", companytax:"Company Tax ID No.",
     items:"Items", desc:"Description", amount:"Amount (THB)", addItem:"Add item",
     subtotal:"Subtotal", wht:"Withholding Tax", netTotal:"Net Total", total:"Grand Total",
-    docNumShortInv:"Invoice No.", docNumShortRcp:"Receipt No.",
+    docNumShortInv:"Invoice No.", docNumShortRcp:"Receipt No.", docNumShortQuo:"Quotation No.",
     whtSection:"Withholding Tax", whtEnable:"Apply withholding tax", whtRate:"Rate",
     whtNone:"No tax", whtDeduct:"Withhold (deduct from total)", whtAdd:"Add on (add to total)",
     brandSection:"Logo / Brand (optional)", brandShow:"Show logo and brand info on document",
-    brandLogo:"Upload logo", brandName:"Brand name", brandSlogan:"Slogan",
+    brandLogo:"Upload logo", brandName:"Brand name", brandSlogan:"Slogan", brandLogoSize:"Logo size",
     payment:"Payment Method", transfer:"Bank Transfer", cash:"Cash",
     bankName:"Bank", accName:"Account Name", accNumber:"Account Number",
-    words:"Amount in Words", generate:"Create Document", generating:"Generating PDF...",
+    words:"Amount in Words", generate:"Create Document (PDF)", generating:"Generating PDF...",
+    generateImg:"Create Image (JPG)", generatingImg:"Generating image...",
     signA_inv:"Issued By", signB_inv:"Customer",
     signA_rcp:"Received By", signB_rcp:"Paid By",
+    signA_quo:"Quoted By", signB_quo:"Customer",
     signDate:"Date Signed", printedName:"( .............................................. )",
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— No items —",
     payVia:"Paid via", none:"—",
   },
   zh:{
-    subtitle:"单据生成系统", invoice:"发票", receipt:"收据",
-    docInfo:"单据信息", docNumberInv:"发票编号（可留空）", docNumberRcp:"收据编号（可留空）",
-    date:"日期",
+    subtitle:"单据生成系统", invoice:"发票", receipt:"收据", quotation:"报价单",
+    docInfo:"单据信息", docNumberInv:"发票编号（可留空）", docNumberRcp:"收据编号（可留空）", docNumberQuo:"报价单编号（可留空）",
+    date:"日期", validUntil:"有效期至（可选）", validUntilDoc:"有效期至",
     partyA_inv:"开票方", partyB_inv:"客户 / 收票方",
     partyA_rcp:"收款方", partyB_rcp:"付款方",
+    partyA_quo:"报价方", partyB_quo:"客户 / 收件方",
     name:"姓名", address:"地址", idType:"证件类型", idNumber:"证件号码", phone:"电话号码",
     idcard:"身份证号", taxid:"税号", passport:"护照号码",
     companyreg:"公司注册号", companytax:"公司税号",
     items:"项目明细", desc:"说明", amount:"金额（泰铢）", addItem:"添加项目",
     subtotal:"小计", wht:"预扣税", netTotal:"净额", total:"总计",
-    docNumShortInv:"发票编号", docNumShortRcp:"收据编号",
+    docNumShortInv:"发票编号", docNumShortRcp:"收据编号", docNumShortQuo:"报价单编号",
     whtSection:"预扣税", whtEnable:"启用预扣税", whtRate:"税率",
     whtNone:"无预扣税", whtDeduct:"预扣（从总额中扣除）", whtAdd:"加收（加到总额中）",
     brandSection:"标志 / 品牌（可选）", brandShow:"在单据上显示标志与品牌信息",
-    brandLogo:"上传标志", brandName:"品牌名称", brandSlogan:"标语",
+    brandLogo:"上传标志", brandName:"品牌名称", brandSlogan:"标语", brandLogoSize:"标志大小",
     payment:"付款方式", transfer:"银行转账", cash:"现金",
     bankName:"银行", accName:"账户名称", accNumber:"账号",
-    words:"大写金额", generate:"生成单据", generating:"正在生成 PDF...",
+    words:"大写金额", generate:"生成单据 (PDF)", generating:"正在生成 PDF...",
+    generateImg:"生成图片 (JPG)", generatingImg:"正在生成图片...",
     signA_inv:"开票方", signB_inv:"客户",
     signA_rcp:"收款方", signB_rcp:"付款方",
+    signA_quo:"报价方", signB_quo:"客户",
     signDate:"签署日期", printedName:"( .............................................. )",
     footer:"Powered by THE LIVING PLUS",
     emptyItem:"— 暂无项目 —",
@@ -479,6 +520,11 @@ const T = {
   }
 };
 const ID_TYPES = ["idcard","taxid","passport","companyreg","companytax"];
+const DOC_META = {
+  invoice:   {title:'invoice',   partyA:'partyA_inv', partyB:'partyB_inv', signA:'signA_inv', signB:'signB_inv', numShort:'docNumShortInv', numDefault:'docNumberInv', prefix:'INV'},
+  receipt:   {title:'receipt',   partyA:'partyA_rcp', partyB:'partyB_rcp', signA:'signA_rcp', signB:'signB_rcp', numShort:'docNumShortRcp', numDefault:'docNumberRcp', prefix:'RCP'},
+  quotation: {title:'quotation', partyA:'partyA_quo', partyB:'partyB_quo', signA:'signA_quo', signB:'signB_quo', numShort:'docNumShortQuo', numDefault:'docNumberQuo', prefix:'QUO'}
+};
 
 /* ============================================================
    STATE
@@ -488,6 +534,7 @@ let state = {
   docType:'invoice',
   docNumber:'',
   date: new Date().toISOString().slice(0,10),
+  validUntil:'',
   partyA:{name:'THE LIVING PLUS', address:'', idType:'taxid', idNumber:'', phone:''},
   partyB:{name:'', address:'', idType:'idcard', idNumber:'', phone:''},
   items:[{desc:'', amount:''}],
@@ -497,6 +544,7 @@ let state = {
   bankName:'', accName:'THE LIVING PLUS', accNumber:'',
   showBrand:false,
   brandLogo:'', // data URL
+  brandLogoSize:56,
   brandName:'THE LIVING PLUS',
   brandSlogan:'Real Estate Advisory & Brokerage'
 };
@@ -730,12 +778,15 @@ function idTypeOptions(t, selected){
 
 function renderStaticLabels(){
   const t = T[state.lang];
+  const meta = DOC_META[state.docType];
   document.getElementById('uiSubtitle').textContent = t.subtitle;
   document.getElementById('lblDocInfo').textContent = t.docInfo;
-  document.getElementById('lblDocNumber').textContent = state.docType==='invoice' ? t.docNumberInv : t.docNumberRcp;
+  document.getElementById('lblDocNumber').textContent = t[meta.numDefault];
   document.getElementById('lblDate').textContent = t.date;
-  document.getElementById('lblPartyA').textContent = state.docType==='invoice' ? t.partyA_inv : t.partyA_rcp;
-  document.getElementById('lblPartyB').textContent = state.docType==='invoice' ? t.partyB_inv : t.partyB_rcp;
+  document.getElementById('lblValidUntil').textContent = t.validUntil;
+  document.getElementById('validUntilWrap').style.display = state.docType==='quotation' ? 'block' : 'none';
+  document.getElementById('lblPartyA').textContent = t[meta.partyA];
+  document.getElementById('lblPartyB').textContent = t[meta.partyB];
   document.getElementById('lblItems').textContent = t.items;
   document.getElementById('lblAddItem').textContent = t.addItem;
   document.getElementById('lblWht').textContent = t.whtSection;
@@ -746,6 +797,7 @@ function renderStaticLabels(){
   document.getElementById('lblBrandSection').textContent = t.brandSection;
   document.getElementById('lblBrandShow').textContent = t.brandShow;
   document.getElementById('lblBrandLogo').textContent = t.brandLogo;
+  document.getElementById('lblBrandLogoSize').firstChild.textContent = t.brandLogoSize + ' ';
   document.getElementById('lblBrandName').textContent = t.brandName;
   document.getElementById('lblBrandSlogan').textContent = t.brandSlogan;
   document.getElementById('lblPayment').textContent = t.payment;
@@ -755,9 +807,11 @@ function renderStaticLabels(){
   document.getElementById('lblAccName').textContent = t.accName;
   document.getElementById('lblAccNumber').textContent = t.accNumber;
   document.getElementById('lblGenerate').textContent = t.generate;
+  document.getElementById('lblGenerateImg').textContent = t.generateImg;
   document.getElementById('btnInvoice').textContent = t.invoice;
   document.getElementById('btnReceipt').textContent = t.receipt;
-  document.getElementById('docNumber').placeholder = state.docType==='invoice' ? 'INV-2026-001' : 'RCP-2026-001';
+  document.getElementById('btnQuotation').textContent = t.quotation;
+  document.getElementById('docNumber').placeholder = meta.prefix + '-2026-001';
 }
 
 function renderPartyFields(){
@@ -845,12 +899,12 @@ function displayFont(lang){
 function renderPreview(){
   const t = T[state.lang];
   const lang = state.lang;
-  const isInvoice = state.docType === 'invoice';
-  const labelA = isInvoice ? t.partyA_inv : t.partyA_rcp;
-  const labelB = isInvoice ? t.partyB_inv : t.partyB_rcp;
-  const signA = isInvoice ? t.signA_inv : t.signA_rcp;
-  const signB = isInvoice ? t.signB_inv : t.signB_rcp;
-  const titleWord = isInvoice ? t.invoice : t.receipt;
+  const meta = DOC_META[state.docType];
+  const labelA = t[meta.partyA];
+  const labelB = t[meta.partyB];
+  const signA = t[meta.signA];
+  const signB = t[meta.signB];
+  const titleWord = t[meta.title];
 
   function partyBlock(label, p){
     const idLabel = t[p.idType];
@@ -912,8 +966,8 @@ function renderPreview(){
       ${state.showBrand ? `
       <div class="doc-brand">
         ${state.brandLogo
-          ? `<img src="${state.brandLogo}" alt="logo" style="width:56px;height:56px;object-fit:contain;">`
-          : `<div class="seal-lg">${escHtml((state.brandName||'').split(/\s+/).map(w=>w[0]).join('').slice(0,3).toUpperCase() || 'TLP')}</div>`}
+          ? `<img src="${state.brandLogo}" alt="logo" style="width:${state.brandLogoSize}px;height:${state.brandLogoSize}px;object-fit:contain;flex-shrink:0;">`
+          : ``}
         <div class="brand-text">
           <div class="name">${escHtml(state.brandName)}</div>
           ${state.brandSlogan ? `<div class="tag">${escHtml(state.brandSlogan)}</div>` : ''}
@@ -921,9 +975,10 @@ function renderPreview(){
       </div>` : `<div></div>`}
       <div class="doc-title">
         <div class="main" style="font-family:${displayFont(lang)}">${titleWord}</div>
-        <div class="sub">${lang!=='en' ? (isInvoice? T.en.invoice : T.en.receipt) : ''}</div>
-        ${state.docNumber ? `<div class="num">${isInvoice ? t.docNumShortInv : t.docNumShortRcp}: <b>${escHtml(state.docNumber)}</b></div>` : ''}
+        <div class="sub">${lang!=='en' ? T.en[meta.title] : ''}</div>
+        ${state.docNumber ? `<div class="num">${t[meta.numShort]}: <b>${escHtml(state.docNumber)}</b></div>` : ''}
         <div class="num">${t.date}: <b>${formatDate(state.date, lang)}</b></div>
+        ${state.docType==='quotation' && state.validUntil ? `<div class="num">${t.validUntilDoc}: <b>${formatDate(state.validUntil, lang)}</b></div>` : ''}
       </div>
     </div>
     <hr class="hr">
@@ -960,6 +1015,7 @@ function renderPreview(){
 
     <div class="doc-footer">${t.footer}</div>
   `;
+  scalePreview();
 }
 
 function escHtml(s){
@@ -995,6 +1051,9 @@ document.getElementById('docNumber').addEventListener('input', e=>{
 });
 document.getElementById('docDate').addEventListener('input', e=>{
   state.date = e.target.value; renderPreview();
+});
+document.getElementById('validUntilInput').addEventListener('input', e=>{
+  state.validUntil = e.target.value; renderPreview();
 });
 document.getElementById('addItemBtn').addEventListener('click', ()=>{
   state.items.push({desc:'', amount:''});
@@ -1035,11 +1094,43 @@ document.getElementById('brandLogoInput').addEventListener('change', e=>{
   reader.onload = ev=>{ state.brandLogo = ev.target.result; renderPreview(); };
   reader.readAsDataURL(file);
 });
+document.getElementById('brandLogoSize').addEventListener('input', e=>{
+  state.brandLogoSize = parseInt(e.target.value);
+  document.getElementById('brandLogoSizeVal').textContent = state.brandLogoSize;
+  renderPreview();
+});
 document.getElementById('brandNameInput').addEventListener('input', e=>{state.brandName = e.target.value; renderPreview();});
 document.getElementById('brandSloganInput').addEventListener('input', e=>{state.brandSlogan = e.target.value; renderPreview();});
 
 /* ============================================================
-   PDF EXPORT
+   EXPORT: shared capture helper
+   ============================================================ */
+async function captureDocCanvas(){
+  const node = document.getElementById('previewDoc');
+  const prevTransform = node.style.transform;
+  node.style.transform = 'none';
+  await new Promise(r => requestAnimationFrame(r));
+  try {
+    const canvas = await html2canvas(node, {scale:3, backgroundColor:'#ffffff', useCORS:true});
+    return canvas;
+  } finally {
+    node.style.transform = prevTransform;
+    scalePreview();
+  }
+}
+function exportFileName(ext){
+  const typeWord = state.docType==='invoice' ? 'Invoice' : (state.docType==='receipt' ? 'Receipt' : 'Quotation');
+  const numPart = state.docNumber ? state.docNumber.replace(/[^a-zA-Z0-9-]/g,'') : state.date;
+  return `TheLivingPlus_${typeWord}_${numPart}.${ext}`;
+}
+function errorMessage(err){
+  return (state.lang==='th' ? 'เกิดข้อผิดพลาด: ' : state.lang==='zh' ? '出错：' : 'Error: ') + err.message;
+}
+
+/* ============================================================
+   PDF EXPORT (always a single page — image is scaled to fit
+   one A4 page rather than being paginated, since the document
+   is designed as a one-page layout)
    ============================================================ */
 document.getElementById('generateBtn').addEventListener('click', async ()=>{
   const t = T[state.lang];
@@ -1049,29 +1140,50 @@ document.getElementById('generateBtn').addEventListener('click', async ()=>{
   btn.disabled = true;
   label.textContent = t.generating;
   try {
-    const node = document.getElementById('previewDoc');
-    const canvas = await html2canvas(node, {scale:3, backgroundColor:'#ffffff', useCORS:true});
+    const canvas = await captureDocCanvas();
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p','mm','a4');
     const pageW = 210, pageH = 297;
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    let heightLeft = imgH;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-    heightLeft -= pageH;
-    while (heightLeft > 0){
-      position = heightLeft - imgH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
+    let imgW = pageW;
+    let imgH = (canvas.height * imgW) / canvas.width;
+    if (imgH > pageH){
+      imgH = pageH;
+      imgW = (canvas.width * imgH) / canvas.height;
     }
-    const typeWord = state.docType==='invoice' ? 'Invoice' : 'Receipt';
-    const numPart = state.docNumber ? state.docNumber.replace(/[^a-zA-Z0-9-]/g,'') : state.date;
-    pdf.save(`TheLivingPlus_${typeWord}_${numPart}.pdf`);
+    const offsetX = (pageW - imgW) / 2;
+    pdf.addImage(imgData, 'JPEG', offsetX, 0, imgW, imgH);
+    pdf.save(exportFileName('pdf'));
   } catch(err){
-    alert((state.lang==='th' ? 'เกิดข้อผิดพลาดในการสร้าง PDF: ' : state.lang==='zh' ? '生成PDF时出错：' : 'Error generating PDF: ') + err.message);
+    alert(errorMessage(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    label.textContent = originalText;
+  }
+});
+
+/* ============================================================
+   JPG EXPORT
+   ============================================================ */
+document.getElementById('generateImgBtn').addEventListener('click', async ()=>{
+  const t = T[state.lang];
+  const btn = document.getElementById('generateImgBtn');
+  const label = document.getElementById('lblGenerateImg');
+  const originalText = label.textContent;
+  btn.disabled = true;
+  label.textContent = t.generatingImg;
+  try {
+    const canvas = await captureDocCanvas();
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const a = document.createElement('a');
+    a.href = imgData;
+    a.download = exportFileName('jpg');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(err){
+    alert(errorMessage(err));
     console.error(err);
   } finally {
     btn.disabled = false;
@@ -1087,7 +1199,26 @@ function fullRender(){
   renderPartyFields();
   renderItemFields();
   renderPreview();
+  scalePreview();
 }
+
+function scalePreview(){
+  const doc = document.getElementById('previewDoc');
+  const box = document.getElementById('previewScaleBox');
+  if (!doc || !box) return;
+  const availWidth = box.clientWidth;
+  const scale = Math.min(1, availWidth / 794);
+  doc.style.transform = 'scale(' + scale + ')';
+  const naturalHeight = doc.scrollHeight;
+  box.style.height = (naturalHeight * scale) + 'px';
+}
+
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(scalePreview, 120);
+});
+
 document.getElementById('docDate').value = state.date;
 fullRender();
 </script>
